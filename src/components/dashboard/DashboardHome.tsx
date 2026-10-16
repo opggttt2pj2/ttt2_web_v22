@@ -127,9 +127,9 @@ export function DashboardHome() {
             { value: summary.totalMatches, label: "전체 대전", note: "전체 기록" },
             { value: summary.totalPlayers, label: "등록 플레이어", note: "활동 플레이어" },
             {
-              value: summary.recentDayMatches,
-              label: "최근 24시간 대전",
-              note: "실제 경기 시각 기준",
+              value: summary.todayMatches,
+              label: "오늘 대전",
+              note: "한국 시간 기준",
             },
           ].map(({ value, label, note }) => (
             <StatCard

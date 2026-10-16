@@ -24,6 +24,7 @@ import { CharacterName } from "@/components/matches/CharacterName";
 import { MapImage, MapPreviewModal } from "@/components/matches/MapImage";
 import { WinRateGauge } from "@/components/charts/Charts";
 import { MapPickerModal } from "@/components/profile/MapPickerModal";
+import { ProfilePerformanceTrend } from "@/components/profile/ProfilePerformanceTrend";
 import { SearchSubmitButton } from "@/components/search/PlayerSearch";
 import { usePwaStandalone } from "@/components/pwa/PwaControls";
 
@@ -133,7 +134,7 @@ function ProfileContent({ profile }: { profile: string }) {
               aria-pressed={profileView === "maps"}
               onClick={() => setProfileView("maps")}
             >
-              맵
+              분석
             </button>
             <button
               type="button"
@@ -520,6 +521,10 @@ function ProfileContent({ profile }: { profile: string }) {
               </motion.article>
             )}
           </section>
+        )}
+
+        {profileStatistics && (!isStandalone || profileView === "maps") && (
+          <ProfilePerformanceTrend trend={profileStatistics.trend} />
         )}
 
         {(!isStandalone || profileView === "matches") && (

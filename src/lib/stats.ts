@@ -5,11 +5,14 @@ import {
   playerNames,
 } from "@/lib/matches";
 
-export function recentDayMatchCount(matches: Match[], now: number) {
-  const cutoff = now - 24 * 60 * 60 * 1000;
+export function todayMatchCount(matches: Match[], now: number) {
+  const koreaOffset = 9 * 60 * 60 * 1000;
+  const koreaTodayStart = new Date(now + koreaOffset);
+  koreaTodayStart.setUTCHours(0, 0, 0, 0);
+  const cutoff = koreaTodayStart.getTime() - koreaOffset;
   return matches.filter((match) => {
     const playedAt = Date.parse(match.playedAt);
-    return Number.isFinite(playedAt) && playedAt >= cutoff;
+    return Number.isFinite(playedAt) && playedAt >= cutoff && playedAt <= now;
   }).length;
 }
 
@@ -235,7 +238,7 @@ export function dashboardSummary(matches: Match[], now: number) {
   return {
     totalMatches: matches.length,
     totalPlayers: playerNames(matches).length,
-    recentDayMatches: recentDayMatchCount(matches, now),
+    todayMatches: todayMatchCount(matches, now),
     characters: topCharacters(matches),
     combos: topCombos(matches),
     rising: risingPlayer(matches, now),

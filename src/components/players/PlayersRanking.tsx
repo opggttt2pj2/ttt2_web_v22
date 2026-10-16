@@ -1,13 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { motion } from "framer-motion";
-import { characterLabel, uniqueCharacterIds } from "@/lib/matches";
 import { usePlayerRankings } from "@/hooks/usePlayerRankings";
 import { AppShell } from "@/components/layout/AppShell";
 import { StatusBlock } from "@/components/ui/StatusBlock";
 import { CharacterImage } from "@/components/matches/CharacterImage";
-import { CharacterName } from "@/components/matches/CharacterName";
 import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 
 export function PlayersRanking() {
@@ -21,7 +20,7 @@ export function PlayersRanking() {
         keepChildrenOnError={ranking !== null}
         refreshKey={refreshVersion}
         empty={ranking !== null && ranking.length === 0}
-        emptyText="20전 이상인 플레이어가 없습니다."
+        emptyText="계급 정보가 기록된 플레이어가 없습니다."
       >
         {ranking === null ? (
           <p className="py-5 text-sm text-slate-300/80">플레이어 순위를 불러오는 중입니다.</p>
@@ -37,17 +36,26 @@ export function PlayersRanking() {
                 ⚠
               </span>
               <div>
-                <strong className="block text-sm font-bold text-amber-700">실전 기록을 바탕으로 한 플레이어 랭킹</strong>
+                <strong className="block text-sm font-bold text-amber-700">계급 기준 플레이어 랭킹</strong>
                 <p className="mt-1 text-sm leading-6 text-[var(--muted)]">
-                  현재 순위는 계급이 아닌 승률을 기준으로 산정됩니다. 객관적인 비교를 위해 총 20전
-                  이상 기록된 플레이어만 집계하며, 승률이 같을 경우 더 많은 경기 수를 기록한
-                  플레이어가 우선됩니다.
+                  각 캐릭터의 가장 최근 기록 계급 중 가장 높은 계급 순입니다. 같은 계급에서는
+                  승률, 전체 경기 수, 이름 순으로 정렬합니다. 계급이 한 번 이상 기록된 플레이어가
+                  대상이며, 계급은 마지막 관측 경기 시점의 기록입니다.
                 </p>
               </div>
             </div>
             <div className="grid">
               {ranking.map((item, index) => {
-                const ids = uniqueCharacterIds(item.team.ids);
+                const teamCharacters = item.team.ids
+                  .map((id, teamIndex) => ({
+                    id,
+                    rankCode: item.team.ranks[teamIndex],
+                  }))
+                  .filter(
+                    (character, teamIndex, characters) =>
+                      characters.findIndex(({ id }) => id === character.id) ===
+                      teamIndex,
+                  );
                 return (
                   <Link
                     className="grid items-center gap-3 border-b border-[var(--line)] py-4 last:border-b-0 md:grid-cols-[42px_minmax(0,calc(48%-66px))_minmax(0,1fr)_72px]"
@@ -56,22 +64,30 @@ export function PlayersRanking() {
                   >
                     <b className="text-sm font-bold text-[var(--muted)]">{String(index + 1).padStart(2, "0")}</b>
                     <div className="min-w-0">
-                      <strong className="mb-1 block text-base font-semibold text-[var(--text)]">{item.name}</strong>
-                      <span className="flex flex-wrap items-center gap-2 text-sm text-[var(--muted)]">
-                        {ids.map((id) => (
-                          <CharacterImage
-                            key={id}
-                            id={id}
-                            width={72}
-                            height={80}
-                            sizes="(max-width: 500px) 56px, 72px"
-                          />
+                      <span className="mb-2 flex flex-wrap items-center gap-2">
+                        <strong className="text-base font-semibold text-[var(--text)]">{item.name}</strong>
+                      </span>
+                      <span className="flex flex-wrap items-center gap-2">
+                        {teamCharacters.map(({ id, rankCode }) => (
+                          <span className="flex w-[72px] flex-col items-center gap-1" key={id}>
+                            <CharacterImage
+                              id={id}
+                              width={72}
+                              height={80}
+                              sizes="(max-width: 500px) 56px, 72px"
+                            />
+                            {rankCode !== null ? (
+                              <Image
+                                src={`/ranks/${rankCode}.webp`}
+                                alt={`계급 ${rankCode}`}
+                                width={84}
+                                height={44}
+                                sizes="84px"
+                                className="h-auto w-[84px] max-w-none"
+                              />
+                            ) : null}
+                          </span>
                         ))}
-                        {ids.length ? (
-                          <CharacterName className="whitespace-nowrap text-base text-[var(--text)]">
-                            {ids.map(characterLabel).join(" · ")}
-                          </CharacterName>
-                        ) : null}
                       </span>
                     </div>
                     <span className="text-base text-[var(--muted)] md:justify-self-start">

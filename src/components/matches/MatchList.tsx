@@ -1,9 +1,9 @@
 import Link from "next/link";
+import Image from "next/image";
 import { MotionConfig, motion } from "framer-motion";
-import { Match, characterLabel, isWinner, mapLabel, uniqueCharacterIds } from "@/lib/matches";
+import { Match, isWinner, mapLabel, uniqueCharacterIds } from "@/lib/matches";
 import { formatDate, formatDuration } from "@/lib/format";
 import { CharacterImage } from "@/components/matches/CharacterImage";
-import { CharacterName } from "@/components/matches/CharacterName";
 import { MapImage } from "@/components/matches/MapImage";
 
 type Props = {
@@ -16,12 +16,14 @@ type Props = {
 function MatchSide({
   name,
   ids,
+  ranks,
   seat,
   won,
   hasKnownWinner,
 }: {
   name: string;
   ids: number[];
+  ranks: [number | null, number | null];
   seat: "1P" | "2P";
   won: boolean;
   hasKnownWinner: boolean;
@@ -81,26 +83,38 @@ function MatchSide({
           seat === "1P" ? "justify-items-end sm:justify-end" : "justify-items-start sm:justify-start",
         ].join(" ")}
       >
-        {ids.map((id, index) => (
-          <span
-            className={[
-              "grid min-w-0 w-full max-w-[80px] justify-items-center gap-1 sm:w-[clamp(48px,15vw,80px)] sm:shrink-0 md:w-[100px] md:max-w-none",
-              ids.length === 1 && seat === "1P" ? "col-start-2 justify-self-end sm:col-auto sm:justify-self-auto" : ids.length === 1 ? "justify-self-start sm:justify-self-auto" : "",
-            ].join(" ")}
-            key={`${name}-${id}-${index}`}
-          >
-            <CharacterImage
-              id={id}
-              width={100}
-              height={100}
-              sizes="(max-width: 320px) 48px, (max-width: 533px) 15vw, (max-width: 767px) 80px, (max-width: 1100px) 80px, 100px"
-              className="grid w-full [&>img]:h-auto [&>img]:w-full"
-            />
-            <CharacterName className="text-[var(--muted)] sm:text-[12px]">
-              {characterLabel(id)}
-            </CharacterName>
-          </span>
-        ))}
+        {ids.map((id, index) => {
+          const rankCode = ranks[index];
+          return (
+            <span
+              className={[
+                "grid min-w-0 w-full max-w-[80px] justify-items-center gap-1 sm:w-[clamp(48px,15vw,80px)] sm:shrink-0 md:w-[100px] md:max-w-none",
+                ids.length === 1 && seat === "1P" ? "col-start-2 justify-self-end sm:col-auto sm:justify-self-auto" : ids.length === 1 ? "justify-self-start sm:justify-self-auto" : "",
+              ].join(" ")}
+              key={`${name}-${id}-${index}`}
+            >
+              <CharacterImage
+                id={id}
+                width={100}
+                height={100}
+                sizes="(max-width: 320px) 48px, (max-width: 533px) 15vw, (max-width: 767px) 80px, (max-width: 1100px) 80px, 100px"
+                className="grid w-full [&>img]:h-auto [&>img]:w-full"
+              />
+              {rankCode !== null ? (
+                <span className="box-border grid w-full place-items-center border border-transparent">
+                  <Image
+                    src={`/ranks/${rankCode}.webp`}
+                    alt={`계급 ${rankCode}`}
+                    width={100}
+                    height={52}
+                    sizes="(max-width: 767px) 80px, 100px"
+                    className="h-auto w-[116%] max-w-none"
+                  />
+                </span>
+              ) : null}
+            </span>
+          );
+        })}
       </div>
     </div>
   );
@@ -180,6 +194,7 @@ export function MatchList({
               <MatchSide
                 name={match.p1Name}
                 ids={p1CharacterIds}
+                ranks={match.p1CharacterRanks}
                 seat="1P"
                 won={p1Won}
                 hasKnownWinner={hasKnownWinner}
@@ -195,6 +210,7 @@ export function MatchList({
               <MatchSide
                 name={match.p2Name}
                 ids={p2CharacterIds}
+                ranks={match.p2CharacterRanks}
                 seat="2P"
                 won={p2Won}
                 hasKnownWinner={hasKnownWinner}

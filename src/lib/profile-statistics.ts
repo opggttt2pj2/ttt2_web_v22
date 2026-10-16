@@ -27,6 +27,12 @@ export type ProfileStatistics = {
     wins: number;
     rate: number;
   } | null;
+  trend: {
+    timezone: "Asia/Seoul";
+    dates: string[];
+    daily: Array<[number, number]>;
+    teams: Array<{ ids: [number, number]; daily: Array<[number, number]> }>;
+  };
 };
 
 function record(value: unknown, context: string): Record<string, unknown> {
@@ -63,6 +69,80 @@ function parseMatchCounts(value: Record<string, unknown>, context: string) {
   const wins = integer(value.wins, `${context} 승리 수`);
   if (wins > games) throw new Error(`${context} 승리 수가 경기 수보다 큽니다.`);
   return { games, wins };
+}
+
+function parseDailyCounts(value: unknown, context: string): [number, number] {
+  if (!Array.isArray(value) || value.length !== 2) {
+    throw new Error(`${context} 값이 올바르지 않습니다.`);
+  }
+  const games = integer(value[0], `${context} 경기 수`);
+  const wins = integer(value[1], `${context} 승리 수`);
+  if (wins > games) throw new Error(`${context} 승리 수가 경기 수보다 큽니다.`);
+  return [games, wins];
+}
+
+function parseProfileTrend(value: unknown): ProfileStatistics["trend"] {
+  const trend = record(value, "경기력 추세");
+  if (trend.timezone !== "Asia/Seoul") {
+    throw new Error("경기력 추세 시간대가 올바르지 않습니다.");
+  }
+  if (!Array.isArray(trend.dates) || trend.dates.length !== 30) {
+    throw new Error("경기력 추세 날짜는 30일이어야 합니다.");
+  }
+  let previousDate = "";
+  const dates = trend.dates.map((date) => {
+    if (
+      typeof date !== "string" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(date) ||
+      !Number.isFinite(Date.parse(`${date}T00:00:00Z`)) ||
+      (previousDate !== "" && date <= previousDate)
+    ) {
+      throw new Error("경기력 추세 날짜 값이 올바르지 않습니다.");
+    }
+    previousDate = date;
+    return date;
+  });
+  if (!Array.isArray(trend.daily) || trend.daily.length !== dates.length) {
+    throw new Error("전체 경기력 추세 데이터가 올바르지 않습니다.");
+  }
+  const daily = trend.daily.map((entry, index) =>
+    parseDailyCounts(entry, `전체 경기력 추세 ${dates[index]}`),
+  );
+
+  if (!Array.isArray(trend.teams)) {
+    throw new Error("팀 조합 경기력 추세 응답이 올바르지 않습니다.");
+  }
+  const teamIds = new Set<string>();
+  const teams = trend.teams.map((entry) => {
+    const item = record(entry, "팀 조합 경기력 추세");
+    if (!Array.isArray(item.ids) || item.ids.length !== 2) {
+      throw new Error("팀 조합 경기력 추세 캐릭터 값이 올바르지 않습니다.");
+    }
+    const ids: [number, number] = [
+      integer(item.ids[0], "팀 조합 경기력 추세 캐릭터 ID"),
+      integer(item.ids[1], "팀 조합 경기력 추세 캐릭터 ID"),
+    ];
+    if (ids[0] > ids[1]) {
+      throw new Error("팀 조합 경기력 추세 캐릭터 순서가 올바르지 않습니다.");
+    }
+    const key = `${ids[0]}:${ids[1]}`;
+    if (teamIds.has(key)) {
+      throw new Error("팀 조합 경기력 추세에 중복 조합이 있습니다.");
+    }
+    teamIds.add(key);
+    if (!Array.isArray(item.daily) || item.daily.length !== dates.length) {
+      throw new Error("팀 조합 경기력 추세 데이터가 올바르지 않습니다.");
+    }
+    const teamDaily = item.daily.map((point, index) =>
+      parseDailyCounts(point, `팀 조합 경기력 추세 ${dates[index]}`),
+    );
+    if (!teamDaily.some(([games]) => games > 0)) {
+      throw new Error("팀 조합 경기력 추세에 경기 기록이 없습니다.");
+    }
+    return { ids, daily: teamDaily };
+  });
+
+  return { timezone: "Asia/Seoul", dates, daily, teams };
 }
 
 export function parseProfileStatistics(value: unknown): ProfileStatistics {
@@ -150,7 +230,9 @@ export function parseProfileStatistics(value: unknown): ProfileStatistics {
     };
   }
 
-  return { name: payload.name, summary, teams, maps, rivals, selectedRival };
+  const trend = parseProfileTrend(payload.trend);
+
+  return { name: payload.name, summary, teams, maps, rivals, selectedRival, trend };
 }
 
 export function parsePlayerNameSuggestions(value: unknown): string[] {

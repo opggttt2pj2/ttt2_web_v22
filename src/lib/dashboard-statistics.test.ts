@@ -5,7 +5,7 @@ function payload() {
   return {
     totalMatches: 20,
     totalPlayers: 3,
-    recentDayMatches: 0,
+    todayMatches: 0,
     characters: [{ id: 0, count: 20, rate: 25 }],
     combos: [{ ids: [0, 64], games: 10, wins: 7, rate: 70 }],
     rising: null,
@@ -22,6 +22,7 @@ describe("parseDashboardStatistics", () => {
     expect(parseDashboardStatistics(payload())).toMatchObject({
       totalMatches: 20,
       totalPlayers: 3,
+      todayMatches: 0,
       characters: [{ id: 0, count: 20, rate: 25 }],
       combos: [{ ids: [0, 64], games: 10, wins: 7, rate: 70 }],
       activity: expect.arrayContaining([{ key: "2026-09-01", label: "9/1", count: 20 }]),

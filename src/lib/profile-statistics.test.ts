@@ -18,7 +18,20 @@ function payload(): {
   maps: Array<{ id: number; games: number; wins: number; rate: number }>;
   rivals: Array<{ name: string; games: number; wins: number; lastPlayed: string | null }>;
   selectedRival: { name: string; games: number; wins: number; rate: number } | null;
+  trend: {
+    timezone: "Asia/Seoul";
+    dates: string[];
+    daily: Array<[number, number]>;
+    teams: Array<{ ids: [number, number]; daily: Array<[number, number]> }>;
+  };
 } {
+  const dates = Array.from({ length: 30 }, (_, index) => {
+    const date = new Date(Date.UTC(2026, 8, 1 + index));
+    return date.toISOString().slice(0, 10);
+  });
+  const daily = dates.map((_, index): [number, number] =>
+    index === 29 ? [2, 1] : [0, 0],
+  );
   return {
     name: "Alice",
     summary: {
@@ -33,6 +46,12 @@ function payload(): {
     maps: [{ id: 0, games: 10, wins: 6, rate: 60 }],
     rivals: [{ name: "Bob", games: 8, wins: 5, lastPlayed: "2026-09-29T10:00:00.000Z" }],
     selectedRival: { name: "Bob", games: 8, wins: 5, rate: 62.5 },
+    trend: {
+      timezone: "Asia/Seoul",
+      dates,
+      daily,
+      teams: [{ ids: [0, 64], daily }],
+    },
   };
 }
 
@@ -44,6 +63,11 @@ describe("parseProfileStatistics", () => {
       teams: [{ ids: [0, 64], games: 12 }],
       maps: [{ id: 0, games: 10 }],
       rivals: [{ name: "Bob", games: 8, wins: 5 }],
+      trend: {
+        timezone: "Asia/Seoul",
+        dates: expect.arrayContaining(["2026-09-30"]),
+        teams: [{ ids: [0, 64] }],
+      },
     });
   });
 
@@ -86,7 +110,26 @@ describe("parseProfileStatistics", () => {
     value.maps = [];
     value.rivals = [];
     value.selectedRival = null;
-    expect(parseProfileStatistics(value).summary.games).toBe(0);
+    value.trend.daily = value.trend.daily.map(() => [0, 0]);
+    value.trend.teams = [];
+    expect(parseProfileStatistics(value)).toMatchObject({
+      summary: { games: 0 },
+      trend: { teams: [] },
+    });
+  });
+
+  it("rejects incomplete or inconsistent trend data", () => {
+    const noTrend = payload();
+    delete (noTrend as Partial<typeof noTrend>).trend;
+    expect(() => parseProfileStatistics(noTrend)).toThrow(/경기력 추세 응답/);
+
+    const badDaily = payload();
+    badDaily.trend.daily[0] = [1, 2];
+    expect(() => parseProfileStatistics(badDaily)).toThrow(/승리 수가 경기 수보다 큽니다/);
+
+    const wrongWindow = payload();
+    wrongWindow.trend.dates.pop();
+    expect(() => parseProfileStatistics(wrongWindow)).toThrow(/날짜는 30일/);
   });
 });
 

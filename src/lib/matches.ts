@@ -7,6 +7,8 @@ export type Match = {
   p2Score: number;
   p1Characters: [number, number];
   p2Characters: [number, number];
+  p1CharacterRanks: [number | null, number | null];
+  p2CharacterRanks: [number | null, number | null];
   mapId: number | null;
   playedAt: string;
   startAt: string | null;
@@ -22,6 +24,14 @@ export function normalizeMatch(row: Record<string, unknown>, index: number): Mat
   const winner = String(row.winner ?? row.winner_name ?? "").trim();
   const asNumber = (value: unknown, fallback: number) =>
     Number.isFinite(Number(value)) ? Number(value) : fallback;
+  const asRank = (value: unknown, field: string): number | null => {
+    if (value === null || value === undefined) return null;
+    const rank = Number(value);
+    if (!Number.isInteger(rank) || rank < 0 || rank > 42) {
+      throw new Error(`대전 데이터의 ${field} 계급 코드가 올바르지 않습니다.`);
+    }
+    return rank;
+  };
   const asTimestamp = (value: unknown) =>
     typeof value === "string" && value.length ? value : null;
 
@@ -49,6 +59,14 @@ export function normalizeMatch(row: Record<string, unknown>, index: number): Mat
     p2Characters: [
       asNumber(row.p2_main_character_id, 0),
       asNumber(row.p2_sub_character_id, 0),
+    ],
+    p1CharacterRanks: [
+      asRank(row.p1_main_character_rank, "p1_main_character_rank"),
+      asRank(row.p1_sub_character_rank, "p1_sub_character_rank"),
+    ],
+    p2CharacterRanks: [
+      asRank(row.p2_main_character_rank, "p2_main_character_rank"),
+      asRank(row.p2_sub_character_rank, "p2_sub_character_rank"),
     ],
     mapId: mapId === -1 ? null : mapId,
     playedAt,

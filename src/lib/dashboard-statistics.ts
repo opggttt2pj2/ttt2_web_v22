@@ -1,7 +1,7 @@
 export type DashboardStatistics = {
   totalMatches: number;
   totalPlayers: number;
-  recentDayMatches: number;
+  todayMatches: number;
   characters: Array<{ id: number; count: number; rate: number }>;
   combos: Array<{ ids: [number, number]; games: number; wins: number; rate: number }>;
   rising: {
@@ -47,9 +47,9 @@ export function parseDashboardStatistics(value: unknown): DashboardStatistics {
   const payload = record(value);
   const totalMatches = nonnegativeInteger(payload.totalMatches);
   const totalPlayers = nonnegativeInteger(payload.totalPlayers);
-  const recentDayMatches = nonnegativeInteger(payload.recentDayMatches);
-  if (recentDayMatches > totalMatches) {
-    throw new Error("최근 대전 수가 전체 대전 수보다 큽니다.");
+  const todayMatches = nonnegativeInteger(payload.todayMatches);
+  if (todayMatches > totalMatches) {
+    throw new Error("오늘 대전 수가 전체 대전 수보다 큽니다.");
   }
 
   if (!Array.isArray(payload.characters) || payload.characters.length > 6) {
@@ -127,7 +127,7 @@ export function parseDashboardStatistics(value: unknown): DashboardStatistics {
   return {
     totalMatches,
     totalPlayers,
-    recentDayMatches,
+    todayMatches,
     characters,
     combos,
     rising,

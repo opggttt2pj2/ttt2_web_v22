@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import { prefetchInitialClientData } from "@/lib/client-data-requests";
 import { requestClientStoragePersistence } from "@/lib/client-cache";
 import { useOnlineStatus, usePwaStandalone } from "@/components/pwa/PwaControls";
@@ -148,20 +147,5 @@ export function AppShell({
 }
 
 export function RouteTransition({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const isStandalone = usePwaStandalone();
-
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={pathname}
-        className="min-h-screen bg-transparent"
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: isStandalone ? 0.18 : 0.34, ease: [0.22, 1, 0.36, 1] }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
+  return <div className="min-h-screen bg-transparent">{children}</div>;
 }
