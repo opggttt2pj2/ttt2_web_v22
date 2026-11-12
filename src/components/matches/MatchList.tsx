@@ -23,7 +23,7 @@ function MatchSide({
 }: {
   name: string;
   ids: number[];
-  ranks: [number | null, number | null];
+  ranks: (number | null)[];
   seat: "1P" | "2P";
   won: boolean;
   hasKnownWinner: boolean;

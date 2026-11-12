@@ -49,7 +49,7 @@ describe("parsePlayerRankings", () => {
   it("rejects invalid win counts and malformed teams", () => {
     expect(() => parsePlayerRankings([{ ...ranking(), wins: 21 }])).toThrow(/경기·승리·승률/);
     expect(() =>
-      parsePlayerRankings([{ ...ranking(), team: { ids: [1], games: 3 } }]),
+      parsePlayerRankings([{ ...ranking(), team: { ids: [1, 2, 3], games: 3 } }]),
     ).toThrow(/대표 조합/);
     expect(() =>
       parsePlayerRankings([

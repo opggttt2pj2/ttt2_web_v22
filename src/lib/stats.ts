@@ -19,7 +19,7 @@ export function todayMatchCount(matches: Match[], now: number) {
 export function topTenPlayers(matches: Match[]) {
   const byName = new Map<
     string,
-    { games: number; wins: number; teams: Map<string, { ids: [number, number]; games: number }> }
+    { games: number; wins: number; teams: Map<string, { ids: number[]; games: number }> }
   >();
 
   matches.forEach((match) => {
@@ -31,7 +31,7 @@ export function topTenPlayers(matches: Match[]) {
         byName.get(name) ?? {
           games: 0,
           wins: 0,
-          teams: new Map<string, { ids: [number, number]; games: number }>(),
+          teams: new Map<string, { ids: number[]; games: number }>(),
         };
       item.games += 1;
       if (isWinner(match, name)) item.wins += 1;
@@ -75,7 +75,7 @@ export function topCharacters(matches: Match[], limit = 6) {
 }
 
 export function topCombos(matches: Match[], limit = 6) {
-  const combos = new Map<string, { ids: [number, number]; games: number; wins: number }>();
+  const combos = new Map<string, { ids: number[]; games: number; wins: number }>();
   matches.forEach((match) => {
     [
       { name: match.p1Name, ids: match.p1Characters },
@@ -171,7 +171,7 @@ export function risingPlayer(matches: Match[], now: number) {
 }
 
 export function profileTeams(matches: Match[], profile: string, limit = 5) {
-  const teams = new Map<string, { ids: [number, number]; games: number; wins: number }>();
+  const teams = new Map<string, { ids: number[]; games: number; wins: number }>();
   matches.forEach((match) => {
     const isP1 = match.p1Name.toLowerCase() === profile.toLowerCase();
     const ids = isP1 ? match.p1Characters : match.p2Characters;

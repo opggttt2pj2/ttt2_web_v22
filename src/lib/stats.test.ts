@@ -58,13 +58,37 @@ describe("normalizeMatch", () => {
     expect(result?.p2CharacterRanks).toEqual([38, 42]);
   });
 
+  it("treats a null sub character as solo play", () => {
+    const soloMatch = normalizeMatch(
+      {
+        id: 4,
+        p1_name: "Alice",
+        p2_name: "Bob",
+        winner: "Alice",
+        p1_main_character_id: 25,
+        p1_sub_character_id: null,
+        p2_main_character_id: 4,
+        p2_sub_character_id: 19,
+        p1_main_character_rank: 30,
+        p1_sub_character_rank: null,
+        p2_main_character_rank: 12,
+        p2_sub_character_rank: 8,
+      },
+      0,
+    );
+    expect(soloMatch?.p1Characters).toEqual([25]);
+    expect(soloMatch?.p1CharacterRanks).toEqual([30]);
+    expect(soloMatch?.p2Characters).toEqual([4, 19]);
+    expect(soloMatch?.p2CharacterRanks).toEqual([12, 8]);
+  });
+
   it("allows missing legacy ranks", () => {
     const legacyMatch = normalizeMatch(
       { id: 2, p1_name: "Alice", p2_name: "Bob", winner: "Bob" },
       0,
     );
-    expect(legacyMatch?.p1CharacterRanks).toEqual([null, null]);
-    expect(legacyMatch?.p2CharacterRanks).toEqual([null, null]);
+    expect(legacyMatch?.p1CharacterRanks).toEqual([null]);
+    expect(legacyMatch?.p2CharacterRanks).toEqual([null]);
   });
 
   it("rejects rank codes outside the integer range 0-42", () => {
@@ -86,7 +110,8 @@ describe("normalizeMatch", () => {
 });
 
 describe("uniqueCharacterIds", () => {
-  it("collapses solo tags", () => {
+  it("keeps solo (length 1) and collapses duplicate legacy tags", () => {
+    expect(uniqueCharacterIds([64])).toEqual([64]);
     expect(uniqueCharacterIds([64, 64])).toEqual([64]);
     expect(uniqueCharacterIds([0, 64])).toEqual([0, 64]);
   });

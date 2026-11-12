@@ -22,13 +22,13 @@ function displayDate(date: string, period: Period) {
 }
 
 export function ProfilePerformanceTrend({ trend }: { trend: ProfileTrend }) {
-  const [period, setPeriod] = useState<Period>(7);
+  const [period, setPeriod] = useState<Period>(1);
   const [filter, setFilter] = useState("all");
 
   const filters = useMemo(
     () =>
       trend.teams.map((team) => ({
-        key: `team:${team.ids[0]}:${team.ids[1]}`,
+        key: `team:${team.ids.join(":")}`,
         label: uniqueCharacterIds(team.ids).map(characterLabel).join(" + "),
         daily: team.daily,
       })),

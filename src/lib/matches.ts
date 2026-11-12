@@ -5,10 +5,11 @@ export type Match = {
   winner: string;
   p1Score: number;
   p2Score: number;
-  p1Characters: [number, number];
-  p2Characters: [number, number];
-  p1CharacterRanks: [number | null, number | null];
-  p2CharacterRanks: [number | null, number | null];
+  // 솔로 플레이(서브 없음)는 길이 1, 태그 플레이는 길이 2 배열이다.
+  p1Characters: number[];
+  p2Characters: number[];
+  p1CharacterRanks: (number | null)[];
+  p2CharacterRanks: (number | null)[];
   mapId: number | null;
   playedAt: string;
   startAt: string | null;
@@ -24,6 +25,9 @@ export function normalizeMatch(row: Record<string, unknown>, index: number): Mat
   const winner = String(row.winner ?? row.winner_name ?? "").trim();
   const asNumber = (value: unknown, fallback: number) =>
     Number.isFinite(Number(value)) ? Number(value) : fallback;
+  // 서브 캐릭터는 없는 경우(솔로 플레이)가 있으므로 null을 그대로 보존한다.
+  const asCharacterId = (value: unknown): number | null =>
+    value === null || value === undefined || value === "" ? null : asNumber(value, 0);
   const asRank = (value: unknown, field: string): number | null => {
     if (value === null || value === undefined) return null;
     const rank = Number(value);
@@ -45,6 +49,9 @@ export function normalizeMatch(row: Record<string, unknown>, index: number): Mat
       ? null
       : asNumber(mapValue, -1);
 
+  const p1SubId = asCharacterId(row.p1_sub_character_id);
+  const p2SubId = asCharacterId(row.p2_sub_character_id);
+
   return {
     id: String(row.id ?? row.match_id ?? `remote-${index}`),
     p1Name,
@@ -52,22 +59,28 @@ export function normalizeMatch(row: Record<string, unknown>, index: number): Mat
     winner,
     p1Score: asNumber(row.p1_score ?? row.player1_score, 0),
     p2Score: asNumber(row.p2_score ?? row.player2_score, 0),
-    p1Characters: [
-      asNumber(row.p1_main_character_id, 0),
-      asNumber(row.p1_sub_character_id, 0),
-    ],
-    p2Characters: [
-      asNumber(row.p2_main_character_id, 0),
-      asNumber(row.p2_sub_character_id, 0),
-    ],
-    p1CharacterRanks: [
-      asRank(row.p1_main_character_rank, "p1_main_character_rank"),
-      asRank(row.p1_sub_character_rank, "p1_sub_character_rank"),
-    ],
-    p2CharacterRanks: [
-      asRank(row.p2_main_character_rank, "p2_main_character_rank"),
-      asRank(row.p2_sub_character_rank, "p2_sub_character_rank"),
-    ],
+    p1Characters:
+      p1SubId === null
+        ? [asNumber(row.p1_main_character_id, 0)]
+        : [asNumber(row.p1_main_character_id, 0), p1SubId],
+    p2Characters:
+      p2SubId === null
+        ? [asNumber(row.p2_main_character_id, 0)]
+        : [asNumber(row.p2_main_character_id, 0), p2SubId],
+    p1CharacterRanks:
+      p1SubId === null
+        ? [asRank(row.p1_main_character_rank, "p1_main_character_rank")]
+        : [
+            asRank(row.p1_main_character_rank, "p1_main_character_rank"),
+            asRank(row.p1_sub_character_rank, "p1_sub_character_rank"),
+          ],
+    p2CharacterRanks:
+      p2SubId === null
+        ? [asRank(row.p2_main_character_rank, "p2_main_character_rank")]
+        : [
+            asRank(row.p2_main_character_rank, "p2_main_character_rank"),
+            asRank(row.p2_sub_character_rank, "p2_sub_character_rank"),
+          ],
     mapId: mapId === -1 ? null : mapId,
     playedAt,
     startAt,
@@ -86,74 +99,77 @@ export function isWinner(match: Match, name: string) {
   return match.winner.toLowerCase() === name.toLowerCase();
 }
 
-/** Same-character tags collapse to one portrait. */
-export function uniqueCharacterIds(ids: [number, number]): number[] {
-  return ids[0] === ids[1] ? [ids[0]] : [...ids];
+// 솔로 플레이(길이 1)와 옛 방식의 "메인==서브" 중복을 하나의 초상화로 합친다.
+export function uniqueCharacterIds(ids: number[]): number[] {
+  return [...new Set(ids)];
 }
 
-export function normalizeTeamOrder(ids: [number, number]): [number, number] {
-  return ids[0] <= ids[1] ? ids : [ids[1], ids[0]];
+export function normalizeTeamOrder(ids: number[]): number[] {
+  return [...new Set(ids)].sort((a, b) => a - b);
 }
 
+// 캐릭터 ID는 게임 native 로스터 id 기준이다(roster_native.json).
+// 표시 이름은 기존 한글 표기를 유지하되 키만 native id로 맞췄다.
+// 49(Combot)은 랭매 사용 금지라 제외(이미지도 없음).
 export const characterNames: Record<number, string> = {
-  88: "언노운",
-  112: "닥터",
-  92: "슬림 밥",
-  108: "방패 오거",
-  90: "쿠니미츠",
-  94: "포레스트 로우",
-  104: "피잭",
-  116: "타이거",
-  106: "알렉스",
-  100: "엔젤",
-  102: "미셸",
-  114: "세바스찬",
-  96: "미하루",
-  110: "바이올렛",
-  42: "로저",
-  58: "레이븐",
-  52: "브루스",
-  34: "스티브",
   0: "폴",
-  68: "밥",
-  10: "니나",
-  46: "왕 진레이",
-  50: "아스카",
-  30: "카즈야",
-  84: "준",
-  28: "헤이하치",
-  20: "진",
-  56: "데빌진",
-  6: "킹",
-  36: "머덕",
-  74: "레오",
-  12: "화랑",
-  18: "에디",
-  32: "리",
-  4: "레이",
-  24: "쿠마",
-  38: "모쿠진",
-  8: "요시미츠",
-  40: "잭",
-  26: "브라이언",
-  2: "로우",
-  72: "미겔",
-  44: "안나",
-  14: "샤오유",
-  64: "리리",
-  76: "라스",
-  82: "트루오거",
-  80: "진파치",
-  78: "알리사",
-  22: "제이씨",
-  62: "아머킹",
-  48: "간류",
-  70: "자피나",
-  54: "백두산",
-  16: "크리스티",
-  66: "드라구노프",
-  60: "펭",
-  86: "팬더",
+  1: "로우",
+  2: "레이",
+  3: "킹",
+  4: "요시미츠",
+  5: "니나",
+  6: "화랑",
+  7: "샤오유",
+  8: "크리스티",
+  9: "진",
+  10: "제이씨",
+  11: "쿠마",
+  12: "브라이언",
+  13: "헤이하치",
+  14: "카즈야",
+  15: "리",
+  16: "스티브",
+  17: "머덕",
+  18: "모쿠진",
+  19: "잭",
+  20: "로저",
+  21: "안나",
+  22: "왕 진레이",
+  23: "간류",
+  24: "아스카",
+  25: "브루스",
+  26: "백두산",
+  27: "데빌진",
+  28: "레이븐",
+  29: "펭",
+  30: "아머킹",
+  31: "리리",
+  32: "드라구노프",
+  33: "에디",
+  34: "밥",
+  35: "자피나",
+  36: "미겔",
+  37: "레오",
+  38: "라스",
+  39: "알리사",
+  40: "진파치",
+  41: "트루오거",
+  42: "준",
+  43: "팬더",
+  44: "언노운",
+  45: "쿠니미츠",
+  46: "슬림 밥",
+  47: "포레스트 로우",
+  48: "미하루",
+  50: "엔젤",
+  51: "미셸",
+  52: "피잭",
+  53: "알렉스",
+  54: "방패 오거",
+  55: "바이올렛",
+  56: "닥터",
+  57: "세바스찬",
+  58: "타이거",
 };
 
 export const mapNames: Record<number, string> = {

@@ -3,7 +3,8 @@ export type DashboardStatistics = {
   totalPlayers: number;
   todayMatches: number;
   characters: Array<{ id: number; count: number; rate: number }>;
-  combos: Array<{ ids: [number, number]; games: number; wins: number; rate: number }>;
+  // 솔로 조합은 길이 1, 태그 조합은 길이 2다.
+  combos: Array<{ ids: number[]; games: number; wins: number; rate: number }>;
   rising: {
     name: string;
     previous: { games: number; wins: number };
@@ -70,13 +71,10 @@ export function parseDashboardStatistics(value: unknown): DashboardStatistics {
   }
   const combos = payload.combos.map((entry) => {
     const item = record(entry);
-    if (!Array.isArray(item.ids) || item.ids.length !== 2) {
+    if (!Array.isArray(item.ids) || item.ids.length < 1 || item.ids.length > 2) {
       throw new Error("대시보드 조합 캐릭터 값이 올바르지 않습니다.");
     }
-    const ids: [number, number] = [
-      nonnegativeInteger(item.ids[0]),
-      nonnegativeInteger(item.ids[1]),
-    ];
+    const ids: number[] = item.ids.map((id) => nonnegativeInteger(id));
     const games = nonnegativeInteger(item.games);
     const wins = nonnegativeInteger(item.wins);
     if (games < 10 || wins > games) {

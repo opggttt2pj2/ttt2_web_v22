@@ -157,7 +157,7 @@ export function DashboardHome() {
             <PanelHeader
               eyebrow="META"
               title="캐릭터 픽률"
-              description="전체 경기에서 각 캐릭터가 차지한 출전 비율입니다."
+              description="실제로 선택된 캐릭터 중 각 캐릭터가 차지한 픽 비율입니다."
               badge="TOP 6"
             />
             <PickRateDonutChart

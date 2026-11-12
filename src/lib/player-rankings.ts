@@ -8,8 +8,9 @@ export type PlayerRanking = {
     characterId: number;
   };
   team: {
-    ids: [number, number];
-    ranks: [number | null, number | null];
+    // 솔로 조합은 길이 1, 태그 조합은 길이 2다. ranks는 ids와 같은 길이다.
+    ids: number[];
+    ranks: (number | null)[];
     games: number;
   };
 };
@@ -78,20 +79,14 @@ export function parsePlayerRankings(value: unknown): PlayerRanking[] {
     }
 
     const team = record(item.team);
-    if (!Array.isArray(team.ids) || team.ids.length !== 2) {
+    if (!Array.isArray(team.ids) || team.ids.length < 1 || team.ids.length > 2) {
       throw new Error("플레이어 대표 조합의 캐릭터 값이 올바르지 않습니다.");
     }
-    const ids: [number, number] = [
-      nonnegativeInteger(team.ids[0]),
-      nonnegativeInteger(team.ids[1]),
-    ];
-    if (!Array.isArray(team.ranks) || team.ranks.length !== 2) {
+    const ids: number[] = team.ids.map((id) => nonnegativeInteger(id));
+    if (!Array.isArray(team.ranks) || team.ranks.length !== ids.length) {
       throw new Error("플레이어 팀 캐릭터 계급 값이 올바르지 않습니다.");
     }
-    const ranks: [number | null, number | null] = [
-      rankCode(team.ranks[0]),
-      rankCode(team.ranks[1]),
-    ];
+    const ranks: (number | null)[] = team.ranks.map((rank) => rankCode(rank));
     const teamGames = nonnegativeInteger(team.games);
     if (teamGames < 1 || teamGames > games) {
       throw new Error("플레이어 대표 조합의 경기 수가 올바르지 않습니다.");

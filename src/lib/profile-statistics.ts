@@ -9,7 +9,8 @@ export type ProfileStatistics = {
     lastAccess: string | null;
   };
   teams: Array<{
-    ids: [number, number];
+    // 솔로 조합은 길이 1, 태그 조합은 길이 2다.
+    ids: number[];
     games: number;
     wins: number;
     rate: number;
@@ -31,7 +32,7 @@ export type ProfileStatistics = {
     timezone: "Asia/Seoul";
     dates: string[];
     daily: Array<[number, number]>;
-    teams: Array<{ ids: [number, number]; daily: Array<[number, number]> }>;
+    teams: Array<{ ids: number[]; daily: Array<[number, number]> }>;
   };
 };
 
@@ -115,17 +116,16 @@ function parseProfileTrend(value: unknown): ProfileStatistics["trend"] {
   const teamIds = new Set<string>();
   const teams = trend.teams.map((entry) => {
     const item = record(entry, "팀 조합 경기력 추세");
-    if (!Array.isArray(item.ids) || item.ids.length !== 2) {
+    if (!Array.isArray(item.ids) || item.ids.length < 1 || item.ids.length > 2) {
       throw new Error("팀 조합 경기력 추세 캐릭터 값이 올바르지 않습니다.");
     }
-    const ids: [number, number] = [
-      integer(item.ids[0], "팀 조합 경기력 추세 캐릭터 ID"),
-      integer(item.ids[1], "팀 조합 경기력 추세 캐릭터 ID"),
-    ];
-    if (ids[0] > ids[1]) {
+    const ids: number[] = item.ids.map((id) =>
+      integer(id, "팀 조합 경기력 추세 캐릭터 ID"),
+    );
+    if (ids.length === 2 && ids[0] > ids[1]) {
       throw new Error("팀 조합 경기력 추세 캐릭터 순서가 올바르지 않습니다.");
     }
-    const key = `${ids[0]}:${ids[1]}`;
+    const key = ids.join(":");
     if (teamIds.has(key)) {
       throw new Error("팀 조합 경기력 추세에 중복 조합이 있습니다.");
     }
@@ -176,13 +176,10 @@ export function parseProfileStatistics(value: unknown): ProfileStatistics {
   }
   const teams = payload.teams.map((entry) => {
     const item = record(entry, "주력 조합");
-    if (!Array.isArray(item.ids) || item.ids.length !== 2) {
+    if (!Array.isArray(item.ids) || item.ids.length < 1 || item.ids.length > 2) {
       throw new Error("주력 조합 캐릭터 값이 올바르지 않습니다.");
     }
-    const ids: [number, number] = [
-      integer(item.ids[0], "캐릭터 ID"),
-      integer(item.ids[1], "캐릭터 ID"),
-    ];
+    const ids: number[] = item.ids.map((id) => integer(id, "캐릭터 ID"));
     const counts = parseMatchCounts(item, "주력 조합");
     if (counts.games === 0) throw new Error("주력 조합은 경기 수가 1 이상이어야 합니다.");
     return { ids, ...counts, rate: percentage(item.rate, "주력 조합 승률") };
