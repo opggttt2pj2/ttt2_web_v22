@@ -25,6 +25,7 @@ import { MapImage, MapPreviewModal } from "@/components/matches/MapImage";
 import { WinRateGauge } from "@/components/charts/Charts";
 import { MapPickerModal } from "@/components/profile/MapPickerModal";
 import { ProfilePerformanceTrend } from "@/components/profile/ProfilePerformanceTrend";
+import { ProfileCombatStats } from "@/components/profile/ProfileCombatStats";
 import { SearchSubmitButton } from "@/components/search/PlayerSearch";
 import { usePwaStandalone } from "@/components/pwa/PwaControls";
 
@@ -492,27 +493,67 @@ function ProfileContent({ profile }: { profile: string }) {
                     (selectedRival ? [selectedRival] : selectedOpponent ? [] : rivals).map((rival) => {
                       const row = (
                         <>
-                          <strong className="truncate text-base font-semibold text-white">{rival.name}</strong>
-                          <span className="text-sm text-slate-300/80">
-                            <AnimatedNumber value={rival.games} refreshKey={statisticsRefreshVersion} />전{" "}
-                            <AnimatedNumber value={rival.wins} refreshKey={statisticsRefreshVersion} />승{" "}
-                            <AnimatedNumber value={rival.games - rival.wins} refreshKey={statisticsRefreshVersion} />패
-                          </span>
-                          <b className="text-right text-base font-bold text-cyan-300">
-                            <AnimatedNumber
-                              value={rival.games ? (rival.wins / rival.games) * 100 : 0}
-                              refreshKey={statisticsRefreshVersion}
-                              decimals={1}
-                            />%
-                          </b>
+                          <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5 max-md:grid-cols-[minmax(0,1fr)_auto_56px] md:grid-cols-[minmax(0,1fr)_auto_56px]">
+                            <strong className="truncate text-base font-semibold text-white">{rival.name}</strong>
+                            <span className="text-sm text-slate-300/80">
+                              <AnimatedNumber value={rival.games} refreshKey={statisticsRefreshVersion} />전{" "}
+                              <AnimatedNumber value={rival.wins} refreshKey={statisticsRefreshVersion} />승{" "}
+                              <AnimatedNumber value={rival.games - rival.wins} refreshKey={statisticsRefreshVersion} />패
+                            </span>
+                            <b className="text-right text-base font-bold text-cyan-300">
+                              <AnimatedNumber
+                                value={rival.games ? (rival.wins / rival.games) * 100 : 0}
+                                refreshKey={statisticsRefreshVersion}
+                                decimals={1}
+                              />%
+                            </b>
+                          </div>
+                          {rival.stats ? (
+                            <section className="mt-3 rounded-xl border border-cyan-400/15 bg-slate-950/40 p-3">
+                              <h4 className="mb-2 text-[10px] font-bold tracking-[0.08em] text-slate-400">
+                                상대별 전투 스탯
+                              </h4>
+                              <div className="grid grid-cols-2 gap-2">
+                              {[
+                                { label: "잡기 시도", count: rival.stats.throw_attempts, rate: rival.stats.throw_success_rate },
+                                { label: "잡기 방어", count: rival.stats.throw_defense_attempts, rate: rival.stats.throw_defense_rate },
+                                { label: "하단 시도", count: rival.stats.low_blow_attempts, rate: rival.stats.low_blow_success_rate },
+                                { label: "하단 방어", count: rival.stats.low_blow_defense_attempts, rate: rival.stats.low_blow_defense_rate },
+                              ].map((metric) => (
+                                <div
+                                  className="rounded-lg border border-slate-700/80 bg-slate-800/65 px-2.5 py-2"
+                                  key={metric.label}
+                                >
+                                  <h5 className="text-xs font-semibold text-slate-200">
+                                    {metric.label}
+                                  </h5>
+                                  <div className="mt-2 grid grid-cols-2 gap-2 border-t border-slate-700/70 pt-2">
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] text-slate-400">시도 횟수</p>
+                                      <p className="mt-0.5 text-sm font-bold text-white">
+                                        {metric.count === null ? "—" : `${metric.count}회`}
+                                      </p>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-[10px] text-slate-400">성공률</p>
+                                      <p className="mt-0.5 text-sm font-bold text-cyan-300">
+                                        {metric.rate === null ? "—" : `${metric.rate.toFixed(1)}%`}
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
+                              ))}
+                              </div>
+                            </section>
+                          ) : null}
                         </>
                       );
                       return selectedRival ? (
-                        <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5 border-b border-slate-700/80 py-2.5 last:border-b-0 max-md:grid-cols-[minmax(0,1fr)_auto_56px] md:grid-cols-[minmax(0,1fr)_auto_56px]" key={rival.name}>
+                        <div className="border-b border-slate-700/80 py-2.5 last:border-b-0" key={rival.name}>
                           {row}
                         </div>
                       ) : (
-                        <Link className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2.5 border-b border-slate-700/80 py-2.5 last:border-b-0 max-md:grid-cols-[minmax(0,1fr)_auto_56px] md:grid-cols-[minmax(0,1fr)_auto_56px]" href={`/profile/${encodeURIComponent(rival.name)}`} key={rival.name}>
+                        <Link className="block border-b border-slate-700/80 py-2.5 last:border-b-0" href={`/profile/${encodeURIComponent(rival.name)}`} key={rival.name}>
                           {row}
                         </Link>
                       );
@@ -521,6 +562,10 @@ function ProfileContent({ profile }: { profile: string }) {
               </motion.article>
             )}
           </section>
+        )}
+
+        {(!isStandalone || profileView === "summary") && (
+          <ProfileCombatStats playerName={profile} />
         )}
 
         {profileStatistics && (!isStandalone || profileView === "maps") && (

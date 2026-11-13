@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import {
   CartesianGrid,
+  Legend,
   Line,
   LineChart,
   ResponsiveContainer,
@@ -31,14 +32,24 @@ export function ProfilePerformanceTrend({ trend }: { trend: ProfileTrend }) {
         key: `team:${team.ids.join(":")}`,
         label: uniqueCharacterIds(team.ids).map(characterLabel).join(" + "),
         daily: team.daily,
+        throwDefenseRates: team.throw_defense_rates,
+        throwDefensePeriodRates: team.throw_defense_period_rates,
       })),
     [trend.teams],
   );
   const selectedFilter = filters.find((entry) => entry.key === filter);
   const selectedDaily = selectedFilter?.daily ?? trend.daily;
+  const selectedThrowDefenseRates =
+    selectedFilter?.throwDefenseRates ?? trend.throw_defense_rates;
+  const selectedThrowDefensePeriodRates = selectedFilter
+    ? selectedFilter.throwDefensePeriodRates
+    : trend.throw_defense_period_rates;
+  const periodKey = period === 1 ? "today" : period === 7 ? "last_7_days" : "last_30_days";
+  const throwDefensePeriodRate = selectedThrowDefensePeriodRates[periodKey];
   const startIndex = trend.dates.length - period;
   const chartData = trend.dates.slice(startIndex).map((date, index) => {
-    const [games, wins] = selectedDaily[startIndex + index];
+    const dataIndex = startIndex + index;
+    const [games, wins] = selectedDaily[dataIndex];
     return {
       date,
       label: displayDate(date, period),
@@ -46,6 +57,7 @@ export function ProfilePerformanceTrend({ trend }: { trend: ProfileTrend }) {
       wins,
       losses: games - wins,
       rate: games === 0 ? null : (wins / games) * 100,
+      throwDefenseRate: selectedThrowDefenseRates[dataIndex],
     };
   });
   const totals = chartData.reduce(
@@ -96,12 +108,18 @@ export function ProfilePerformanceTrend({ trend }: { trend: ProfileTrend }) {
         </div>
       </div>
 
-      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
         {[
           ["경기", `${totals.games}전`],
           ["승리", `${totals.wins}승`],
           ["패배", `${losses}패`],
           ["승률", rate === null ? "기록 없음" : `${rate.toFixed(1)}%`],
+          [
+            "잡기 풀기 성공률",
+            throwDefensePeriodRate === null
+              ? "기록 없음"
+              : `${throwDefensePeriodRate.toFixed(1)}%`,
+          ],
         ].map(([label, value]) => (
           <div className="rounded-xl border border-slate-700/80 bg-slate-950/35 px-3 py-2.5" key={label}>
             <span className="block text-xs text-slate-400">{label}</span>
@@ -111,7 +129,11 @@ export function ProfilePerformanceTrend({ trend }: { trend: ProfileTrend }) {
       </div>
 
       {totals.games > 0 ? (
-        <div className="h-56 w-full min-w-0" role="img" aria-label={`${period === 1 ? "오늘" : `최근 ${period}일`} 일별 승률 추세`}>
+        <div
+          className="h-56 w-full min-w-0"
+          role="img"
+          aria-label={`${period === 1 ? "오늘" : `최근 ${period}일`} 일별 승률과 잡기 풀기 성공률 추세`}
+        >
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData} margin={{ top: 10, right: 12, bottom: 2, left: -16 }}>
               <CartesianGrid strokeDasharray="3 5" stroke="#34465e" vertical={false} />
@@ -133,9 +155,9 @@ export function ProfilePerformanceTrend({ trend }: { trend: ProfileTrend }) {
               />
               <Tooltip
                 wrapperClassName="chart-tooltip"
-                formatter={(value) => [
+                formatter={(value, name) => [
                   value === null || value === undefined ? "기록 없음" : `${Number(value).toFixed(1)}%`,
-                  "승률",
+                  name,
                 ]}
                 labelFormatter={(_, payload) => {
                   const date = payload[0]?.payload?.date;
@@ -150,6 +172,11 @@ export function ProfilePerformanceTrend({ trend }: { trend: ProfileTrend }) {
                   boxShadow: "0 12px 36px rgba(0, 0, 0, 0.45)",
                 }}
               />
+              <Legend
+                iconType="plainline"
+                formatter={(value) => <span className="text-slate-300">{value}</span>}
+                wrapperStyle={{ fontSize: 12, paddingTop: 6 }}
+              />
               <Line
                 type="monotone"
                 dataKey="rate"
@@ -159,6 +186,17 @@ export function ProfilePerformanceTrend({ trend }: { trend: ProfileTrend }) {
                 connectNulls={false}
                 dot={{ r: 3, fill: "#46d9ff", strokeWidth: 0 }}
                 activeDot={{ r: 6, fill: "#fff", stroke: "#46d9ff", strokeWidth: 3 }}
+                isAnimationActive={false}
+              />
+              <Line
+                type="monotone"
+                dataKey="throwDefenseRate"
+                name="잡기 풀기 성공률"
+                stroke="#f6bd4b"
+                strokeWidth={2.5}
+                connectNulls={false}
+                dot={{ r: 3, fill: "#f6bd4b", strokeWidth: 0 }}
+                activeDot={{ r: 6, fill: "#fff", stroke: "#f6bd4b", strokeWidth: 3 }}
                 isAnimationActive={false}
               />
             </LineChart>

@@ -1,10 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { MotionConfig, motion } from "framer-motion";
 import { Match, isWinner, mapLabel, uniqueCharacterIds } from "@/lib/matches";
 import { formatDate, formatDuration } from "@/lib/format";
 import { CharacterImage } from "@/components/matches/CharacterImage";
 import { MapImage } from "@/components/matches/MapImage";
+import { MatchDetailPanel } from "@/components/matches/MatchDetailPanel";
 
 type Props = {
   matches: Match[];
@@ -126,6 +128,8 @@ export function MatchList({
   newMatchIds,
   onMapClick,
 }: Props) {
+  const [expandedMatchId, setExpandedMatchId] = useState<string | null>(null);
+
   if (!matches.length) {
     return <p className="py-5 text-sm text-[var(--muted)]">표시할 대전 기록이 없습니다.</p>;
   }
@@ -141,6 +145,7 @@ export function MatchList({
         const p2CharacterIds = uniqueCharacterIds(match.p2Characters);
         const matchNumber = matchNumbers?.get(match.id);
         const isNewMatch = newMatchIds.includes(match.id);
+        const isDetailExpanded = expandedMatchId === match.id;
         const entranceDelay = Math.min(index * 0.045, 0.24);
 
         return (
@@ -247,6 +252,25 @@ export function MatchList({
               <span>시작 {match.startAt ? formatDate(match.startAt) : "시간 없음"}</span>
               <span>종료 {formatDate(match.endAt ?? match.playedAt)}</span>
             </time>
+            <div className="min-w-0 md:col-span-full">
+              <button
+                type="button"
+                className="theme-button inline-flex min-h-9 items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors hover:border-[rgba(74,199,255,0.42)] hover:text-[var(--cyan)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--cyan)]"
+                aria-expanded={isDetailExpanded}
+                aria-controls={`match-detail-${match.id}`}
+                onClick={() =>
+                  setExpandedMatchId(isDetailExpanded ? null : match.id)
+                }
+              >
+                {isDetailExpanded ? "상세 스탯 닫기" : "상세 스탯 보기"}
+                <span aria-hidden="true">{isDetailExpanded ? "−" : "+"}</span>
+              </button>
+              {isDetailExpanded ? (
+                <div id={`match-detail-${match.id}`}>
+                  <MatchDetailPanel matchId={match.id} />
+                </div>
+              ) : null}
+            </div>
           </motion.div>
         );
       })}

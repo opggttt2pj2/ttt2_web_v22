@@ -6,6 +6,7 @@ import {
   parsePlayerNameSuggestions,
   parseProfileStatistics,
 } from "@/lib/profile-statistics";
+import { parsePlayerCombatStatistics } from "@/lib/player-combat-statistics";
 
 function key(namespace: string, parts: string[] = []) {
   return `${namespace}:${JSON.stringify(parts)}`;
@@ -47,6 +48,16 @@ export function profileStatisticsRequest(name: string, opponent: string | null) 
     url: `/api/statistics/profile?${params.toString()}`,
     parse: parseProfileStatistics,
     errorMessage: "플레이어 통계를 불러오지 못했습니다.",
+  };
+}
+
+export function playerCombatStatisticsRequest(name: string) {
+  const params = new URLSearchParams({ name });
+  return {
+    key: key("player-combat-statistics", [name]),
+    url: `/api/statistics/player-combat?${params.toString()}`,
+    parse: parsePlayerCombatStatistics,
+    errorMessage: "플레이어 전투 스탯을 불러오지 못했습니다.",
   };
 }
 

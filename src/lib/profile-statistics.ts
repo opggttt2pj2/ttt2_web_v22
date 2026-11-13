@@ -1,3 +1,20 @@
+export type RivalCombatStats = {
+  throw_attempts: number | null;
+  throw_success_rate: number | null;
+  throw_defense_attempts: number | null;
+  throw_defense_rate: number | null;
+  low_blow_attempts: number | null;
+  low_blow_success_rate: number | null;
+  low_blow_defense_attempts: number | null;
+  low_blow_defense_rate: number | null;
+};
+
+export type ThrowDefensePeriodRates = {
+  today: number | null;
+  last_7_days: number | null;
+  last_30_days: number | null;
+};
+
 export type ProfileStatistics = {
   name: string;
   summary: {
@@ -21,18 +38,27 @@ export type ProfileStatistics = {
     games: number;
     wins: number;
     lastPlayed: string | null;
+    stats: RivalCombatStats | null;
   }>;
   selectedRival: {
     name: string;
     games: number;
     wins: number;
     rate: number;
+    stats: RivalCombatStats | null;
   } | null;
   trend: {
     timezone: "Asia/Seoul";
     dates: string[];
     daily: Array<[number, number]>;
-    teams: Array<{ ids: number[]; daily: Array<[number, number]> }>;
+    throw_defense_rates: Array<number | null>;
+    throw_defense_period_rates: ThrowDefensePeriodRates;
+    teams: Array<{
+      ids: number[];
+      daily: Array<[number, number]>;
+      throw_defense_rates: Array<number | null>;
+      throw_defense_period_rates: ThrowDefensePeriodRates;
+    }>;
   };
 };
 
@@ -72,6 +98,56 @@ function parseMatchCounts(value: Record<string, unknown>, context: string) {
   return { games, wins };
 }
 
+function nullableCount(value: unknown, context: string): number | null {
+  if (value === null || value === undefined) return null;
+  return integer(value, context);
+}
+
+function nullablePercentage(value: unknown, context: string): number | null {
+  if (value === null || value === undefined) return null;
+  return percentage(value, context);
+}
+
+// 상대별 전투 스탯. 그 상대와 스탯이 기록된 경기가 없으면 null입니다.
+function parseRivalCombatStats(
+  value: unknown,
+  context: string,
+): RivalCombatStats | null {
+  if (value === null || value === undefined) return null;
+  const item = record(value, context);
+  return {
+    throw_attempts: nullableCount(item.throw_attempts, `${context} 잡기 시도`),
+    throw_success_rate: nullablePercentage(
+      item.throw_success_rate,
+      `${context} 잡기 성공률`,
+    ),
+    throw_defense_attempts: nullableCount(
+      item.throw_defense_attempts,
+      `${context} 잡기 방어 시도`,
+    ),
+    throw_defense_rate: nullablePercentage(
+      item.throw_defense_rate,
+      `${context} 잡기 방어 성공률`,
+    ),
+    low_blow_attempts: nullableCount(
+      item.low_blow_attempts,
+      `${context} 하단 시도`,
+    ),
+    low_blow_success_rate: nullablePercentage(
+      item.low_blow_success_rate,
+      `${context} 하단 성공률`,
+    ),
+    low_blow_defense_attempts: nullableCount(
+      item.low_blow_defense_attempts,
+      `${context} 하단 방어 시도`,
+    ),
+    low_blow_defense_rate: nullablePercentage(
+      item.low_blow_defense_rate,
+      `${context} 하단 방어 성공률`,
+    ),
+  };
+}
+
 function parseDailyCounts(value: unknown, context: string): [number, number] {
   if (!Array.isArray(value) || value.length !== 2) {
     throw new Error(`${context} 값이 올바르지 않습니다.`);
@@ -80,6 +156,37 @@ function parseDailyCounts(value: unknown, context: string): [number, number] {
   const wins = integer(value[1], `${context} 승리 수`);
   if (wins > games) throw new Error(`${context} 승리 수가 경기 수보다 큽니다.`);
   return [games, wins];
+}
+
+function parseDailyRates(
+  value: unknown,
+  dates: string[],
+  context: string,
+): Array<number | null> {
+  if (!Array.isArray(value) || value.length !== dates.length) {
+    throw new Error(`${context} 데이터가 올바르지 않습니다.`);
+  }
+  return value.map((rate, index) => {
+    if (rate === null) return null;
+    return percentage(rate, `${context} ${dates[index]}`);
+  });
+}
+
+function parseThrowDefensePeriodRates(
+  value: unknown,
+  context: string,
+): ThrowDefensePeriodRates {
+  const rates = record(value, context);
+  const parseRate = (key: keyof ThrowDefensePeriodRates) => {
+    const rate = rates[key];
+    if (rate === null) return null;
+    return percentage(rate, `${context} ${key}`);
+  };
+  return {
+    today: parseRate("today"),
+    last_7_days: parseRate("last_7_days"),
+    last_30_days: parseRate("last_30_days"),
+  };
 }
 
 function parseProfileTrend(value: unknown): ProfileStatistics["trend"] {
@@ -109,6 +216,15 @@ function parseProfileTrend(value: unknown): ProfileStatistics["trend"] {
   const daily = trend.daily.map((entry, index) =>
     parseDailyCounts(entry, `전체 경기력 추세 ${dates[index]}`),
   );
+  const throw_defense_rates = parseDailyRates(
+    trend.throw_defense_rates,
+    dates,
+    "전체 잡기 풀기 성공률 추세",
+  );
+  const throw_defense_period_rates = parseThrowDefensePeriodRates(
+    trend.throw_defense_period_rates,
+    "전체 기간별 잡기 풀기 성공률",
+  );
 
   if (!Array.isArray(trend.teams)) {
     throw new Error("팀 조합 경기력 추세 응답이 올바르지 않습니다.");
@@ -136,13 +252,34 @@ function parseProfileTrend(value: unknown): ProfileStatistics["trend"] {
     const teamDaily = item.daily.map((point, index) =>
       parseDailyCounts(point, `팀 조합 경기력 추세 ${dates[index]}`),
     );
+    const teamThrowDefenseRates = parseDailyRates(
+      item.throw_defense_rates,
+      dates,
+      "팀 조합 잡기 풀기 성공률 추세",
+    );
+    const teamThrowDefensePeriodRates = parseThrowDefensePeriodRates(
+      item.throw_defense_period_rates,
+      "팀 조합 기간별 잡기 풀기 성공률",
+    );
     if (!teamDaily.some(([games]) => games > 0)) {
       throw new Error("팀 조합 경기력 추세에 경기 기록이 없습니다.");
     }
-    return { ids, daily: teamDaily };
+    return {
+      ids,
+      daily: teamDaily,
+      throw_defense_rates: teamThrowDefenseRates,
+      throw_defense_period_rates: teamThrowDefensePeriodRates,
+    };
   });
 
-  return { timezone: "Asia/Seoul", dates, daily, teams };
+  return {
+    timezone: "Asia/Seoul",
+    dates,
+    daily,
+    throw_defense_rates,
+    throw_defense_period_rates,
+    teams,
+  };
 }
 
 export function parseProfileStatistics(value: unknown): ProfileStatistics {
@@ -210,6 +347,7 @@ export function parseProfileStatistics(value: unknown): ProfileStatistics {
       name: item.name,
       ...counts,
       lastPlayed: timestamp(item.lastPlayed, "최근 상대 경기 시각"),
+      stats: parseRivalCombatStats(item.stats, "최근 상대 전투 스탯"),
     };
   });
 
@@ -224,6 +362,7 @@ export function parseProfileStatistics(value: unknown): ProfileStatistics {
       name: item.name,
       ...counts,
       rate: percentage(item.rate, "선택 상대 승률"),
+      stats: parseRivalCombatStats(item.stats, "선택 상대 전투 스탯"),
     };
   }
 

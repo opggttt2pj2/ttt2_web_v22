@@ -23,6 +23,11 @@ const NAV = [
   { href: "/download", label: "Tracker 다운로드", icon: "download" as const },
 ];
 
+// 트래커 다운로드(/download)는 현재 내비게이션에서 노출하지 않습니다.
+// NAV 항목·아이콘·/download 페이지 코드는 모두 보존하며, 다시 노출하려면 이 목록만 비우면 됩니다.
+// (PWA 하단 탭바는 /download 자리를 MyProfileTab으로 치환하므로 이 필터 대상이 아닙니다.)
+const HIDDEN_NAV_HREFS: ReadonlySet<string> = new Set(["/download"]);
+
 function MenuIcon({ name }: { name: (typeof NAV)[number]["icon"] }) {
   const paths = {
     home: (
@@ -109,7 +114,7 @@ export function SidebarNav({
       >
         <p className="m-0 text-[17px] font-bold tracking-[1.2px] text-[var(--muted)] uppercase">STATISTICS</p>
         <nav aria-label="통계 메뉴" className="mt-[18px] grid gap-2">
-          {NAV.map((item) => {
+          {NAV.filter((item) => !HIDDEN_NAV_HREFS.has(item.href)).map((item) => {
             const active =
               item.href === "/"
                 ? section === "home"
